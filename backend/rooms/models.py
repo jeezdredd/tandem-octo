@@ -1,5 +1,7 @@
-from django.db import models
 import uuid
+
+from django.db import models
+
 
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -13,11 +15,11 @@ class Room(models.Model):
         return f"Room {self.id}"
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class RoomState(models.Model):
-    room = models.OneToOneField(Room, on_delete=models.CASCADE, related_name='state')
+    room = models.OneToOneField(Room, on_delete=models.CASCADE, related_name="state")
     current_time = models.FloatField(default=0.0)
     is_playing = models.BooleanField(default=False)
     last_updated = models.DateTimeField(auto_now=True)
