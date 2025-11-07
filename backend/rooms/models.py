@@ -14,3 +14,17 @@ class Room(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class RoomState(models.Model):
+    room = models.OneToOneField(Room, on_delete=models.CASCADE, related_name='state')
+    current_time = models.FloatField(default=0.0)
+    is_playing = models.BooleanField(default=False)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"State for Room {self.room.id}"
+
+    class Meta:
+        verbose_name = "Room State"
+        verbose_name_plural = "Room States"
