@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 100
+target-version = ['py313']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | migrations
+  | static
+  | media
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_glob = ["*/migrations/*", "*/static/*", "*/media/*"]
+known_django = ["django"]
+known_first_party = ["tandem", "rooms"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
