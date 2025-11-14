@@ -79,3 +79,5 @@ dump.rdb
 *.bak
 *.tmp
 .cache/
+PROJECT_CONTEXT.md
+CLAUDE.md
