@@ -30,11 +30,13 @@ SECRET_KEY = os.getenv(
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = (
-    os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if os.getenv("ALLOWED_HOSTS")
-    else []
-)
+ALLOWED_HOSTS = []
+if os.getenv("ALLOWED_HOSTS"):
+    ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
+elif os.getenv("RAILWAY_PUBLIC_DOMAIN"):
+    ALLOWED_HOSTS = [os.getenv("RAILWAY_PUBLIC_DOMAIN")]
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 # Application definition
