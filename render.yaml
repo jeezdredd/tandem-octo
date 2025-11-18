@@ -4,8 +4,8 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: "./build.sh"
-    startCommand: "daphne -b 0.0.0.0 -p $PORT tandem.asgi:application"
+    buildCommand: "cd backend && chmod +x build.sh && ./build.sh"
+    startCommand: "cd backend && daphne -b 0.0.0.0 -p $PORT tandem.asgi:application"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -18,7 +18,10 @@ services:
           name: tandem-db
           property: connectionString
       - key: REDIS_URL
-        sync: false
+        fromService:
+          name: tandem-redis
+          type: redis
+          property: connectionString
       - key: ALLOWED_HOSTS
         sync: false
       - key: CORS_ALLOWED_ORIGINS
@@ -45,4 +48,7 @@ databases:
   - name: tandem-db
     databaseName: tandem_db
     user: tandem_user
+    plan: free
+
+  - name: tandem-redis
     plan: free
