@@ -3,7 +3,7 @@ services:
     name: tandem-backend
     env: python
     region: oregon
-    plan: hobby
+    plan: free
     buildCommand: "cd backend && chmod +x build.sh && ./build.sh"
     startCommand: "cd backend && daphne -b 0.0.0.0 -p $PORT tandem.asgi:application"
     envVars:
