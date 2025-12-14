@@ -9,6 +9,7 @@ function VideoPlayer({ roomId, videoUrl }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const lastTimeRef = useRef(0);
+  const pendingRoomStateRef = useRef(null);
 
   const getYouTubeId = (url) => {
     if (!url) return null;
@@ -27,6 +28,7 @@ function VideoPlayer({ roomId, videoUrl }) {
     videoRef.current = null;
     isSyncingRef.current = false;
     lastTimeRef.current = 0;
+    pendingRoomStateRef.current = null;
     setIsPlaying(false);
     setCurrentTime(0);
   }, [videoUrl]);
@@ -124,6 +126,10 @@ function VideoPlayer({ roomId, videoUrl }) {
           } else {
             videoRef.current.pause();
           }
+        } else if (youtubeId) {
+          // Player not ready yet, save state for later
+          console.log('VideoPlayer: YouTube player not ready, saving room_state for later');
+          pendingRoomStateRef.current = data;
         }
       }
 
@@ -192,6 +198,24 @@ function VideoPlayer({ roomId, videoUrl }) {
     console.log('YouTube player ready, setting ytPlayerRef.current');
     ytPlayerRef.current = player;
     console.log('ytPlayerRef.current is now:', ytPlayerRef.current);
+
+    // Apply pending room state if player wasn't ready when room_state arrived
+    if (pendingRoomStateRef.current) {
+      console.log('Applying pending room state:', pendingRoomStateRef.current);
+      const data = pendingRoomStateRef.current;
+      pendingRoomStateRef.current = null;
+
+      isSyncingRef.current = true;
+      if (data.current_time !== undefined) {
+        player.seekTo(data.current_time, true);
+      }
+      if (data.is_playing) {
+        player.playVideo();
+      } else {
+        player.pauseVideo();
+      }
+      setTimeout(() => { isSyncingRef.current = false; }, 1000);
+    }
   };
 
   if (!videoUrl) {
