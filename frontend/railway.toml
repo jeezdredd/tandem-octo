@@ -3,4 +3,4 @@ builder = "NIXPACKS"
 buildCommand = "npm install && npm run build"
 
 [deploy]
-startCommand = "npm install -g serve && serve -s build -p $PORT"
+startCommand = "npx serve -s build -p $PORT"
