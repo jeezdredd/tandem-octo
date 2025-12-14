@@ -1,8 +1,8 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate"
+buildCommand = "pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --no-input"
 
 [deploy]
-startCommand = "daphne -b 0.0.0.0 -p $PORT tandem.asgi:application"
+startCommand = "python manage.py migrate && daphne -b 0.0.0.0 -p $PORT tandem.asgi:application"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
