@@ -27,17 +27,30 @@ class WebSocketService {
     this.roomId = null;
     this.username = null;
     this.listeners = {};
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 1000;
+    this.shouldReconnect = true;
   }
 
   connect(roomId, username = 'Guest') {
+    // Close existing connection if any
+    if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+      this.socket.close();
+    }
+
     this.roomId = roomId;
     this.username = username;
+    this.shouldReconnect = true;
+    this.reconnectAttempts = 0;
     const url = `${WS_URL}/rooms/${roomId}/`;
 
+    console.log('WebSocket connecting to:', url);
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
       console.log('WebSocket connected');
+      this.reconnectAttempts = 0;
       this.socket.send(JSON.stringify({
         type: 'join',
         username: this.username,
@@ -60,9 +73,22 @@ class WebSocketService {
       this.emit('error', error);
     };
 
-    this.socket.onclose = () => {
-      console.log('WebSocket closed');
+    this.socket.onclose = (event) => {
+      console.log('WebSocket closed, code:', event.code, 'reason:', event.reason);
       this.emit('closed');
+      
+      // Auto-reconnect if not intentionally disconnected
+      if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * this.reconnectAttempts;
+        console.log(`WebSocket reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.emit('reconnecting', { attempt: this.reconnectAttempts, maxAttempts: this.maxReconnectAttempts });
+        setTimeout(() => {
+          if (this.shouldReconnect) {
+            this.connect(this.roomId, this.username);
+          }
+        }, delay);
+      }
     };
   }
 
@@ -135,6 +161,7 @@ class WebSocketService {
   }
 
   disconnect() {
+    this.shouldReconnect = false;
     if (this.socket) {
       this.socket.close();
       this.socket = null;

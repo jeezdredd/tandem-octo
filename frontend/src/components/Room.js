@@ -32,6 +32,7 @@ function Room() {
   const [inputUrl, setInputUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState([]);
 
   useEffect(() => {
@@ -66,11 +67,17 @@ function Room() {
     wsService.on('connected', () => {
       console.log('WebSocket connected');
       setConnected(true);
+      setReconnecting(false);
     });
 
     wsService.on('closed', () => {
       console.log('WebSocket disconnected');
       setConnected(false);
+    });
+
+    wsService.on('reconnecting', () => {
+      console.log('WebSocket reconnecting...');
+      setReconnecting(true);
     });
 
     wsService.on('room_state', (data) => {
@@ -119,6 +126,14 @@ function Room() {
 
   return (
     <div style={styles.container}>
+      {reconnecting && (
+        <div style={styles.reconnectOverlay}>
+          <div style={styles.reconnectBox}>
+            <div style={styles.spinner} />
+            <p style={styles.reconnectText}>Connection lost. Attempting to reconnect...</p>
+          </div>
+        </div>
+      )}
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Комната: {room?.host_username}</h1>
@@ -180,6 +195,40 @@ const styles = {
     background: '#0a0a0a',
     color: 'white',
     padding: '20px',
+    position: 'relative',
+  },
+  reconnectOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.8)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  reconnectBox: {
+    background: '#1a1a1a',
+    padding: '40px',
+    borderRadius: '12px',
+    textAlign: 'center',
+    border: '1px solid #333',
+  },
+  spinner: {
+    width: '40px',
+    height: '40px',
+    border: '4px solid #333',
+    borderTop: '4px solid #667eea',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    margin: '0 auto 20px',
+  },
+  reconnectText: {
+    margin: 0,
+    fontSize: '16px',
+    color: '#ccc',
   },
   loading: {
     minHeight: '100vh',
