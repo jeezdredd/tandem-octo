@@ -163,11 +163,21 @@ function VideoPlayer({ roomId, videoUrl }) {
 
   const getCurrentPlayerTime = () => {
     if (ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
-      return ytPlayerRef.current.getCurrentTime();
+      const playerTime = ytPlayerRef.current.getCurrentTime();
+      // If player returns 0 but we have a saved time, use the saved time
+      // This happens when user clicks play before player has seeked to the correct position
+      if (playerTime === 0 && lastTimeRef.current > 0) {
+        return lastTimeRef.current;
+      }
+      return playerTime;
     } else if (videoRef.current) {
-      return videoRef.current.currentTime;
+      const playerTime = videoRef.current.currentTime;
+      if (playerTime === 0 && lastTimeRef.current > 0) {
+        return lastTimeRef.current;
+      }
+      return playerTime;
     }
-    return currentTime;
+    return lastTimeRef.current || currentTime;
   };
 
   const handlePlay = () => {
