@@ -1,4 +1,25 @@
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws';
+const getWsUrl = () => {
+  // If env variable is set and not localhost, use it
+  if (process.env.REACT_APP_WS_URL && !process.env.REACT_APP_WS_URL.includes('localhost')) {
+    return process.env.REACT_APP_WS_URL;
+  }
+  
+  // Auto-detect based on current page URL (for production)
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use backend URL from env or construct from API URL
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (apiUrl && !apiUrl.includes('localhost')) {
+      const backendHost = apiUrl.replace(/^https?:\/\//, '').replace('/api', '');
+      return `${protocol}//${backendHost}`;
+    }
+  }
+  
+  // Fallback to localhost for development
+  return 'ws://localhost:8000/ws';
+};
+
+const WS_URL = getWsUrl();
 
 class WebSocketService {
   constructor() {
