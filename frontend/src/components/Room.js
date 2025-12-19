@@ -34,6 +34,7 @@ function Room() {
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState([]);
+  const [showCopyToast, setShowCopyToast] = useState(false);
 
   useEffect(() => {
     loadRoom();
@@ -117,7 +118,8 @@ function Room() {
   const copyRoomLink = () => {
     const link = `${window.location.origin}/room/${roomId}`;
     navigator.clipboard.writeText(link);
-    alert('Ссылка на комнату скопирована!');
+    setShowCopyToast(true);
+    setTimeout(() => setShowCopyToast(false), 2000);
   };
 
   if (loading) {
@@ -150,7 +152,7 @@ function Room() {
         <div style={styles.rightSection}>
           <div style={styles.usersSection}>
             <div style={styles.usersHeader}>
-              👥 Участники ({connectedUsers.length})
+              Участники ({connectedUsers.length})
             </div>
             <div style={styles.usersList}>
               {connectedUsers.map((user, index) => (
@@ -170,9 +172,16 @@ function Room() {
 
       <div style={styles.controls}>
         <VideoSearch onSelectVideo={handleSetVideo} />
-        <button onClick={copyRoomLink} style={styles.buttonSecondary}>
-          📋 Copy Room Link
-        </button>
+        <div style={styles.copyButtonContainer}>
+          <button onClick={copyRoomLink} style={styles.buttonSecondary}>
+            Copy Room Link
+          </button>
+          {showCopyToast && (
+            <div style={styles.copyToast}>
+              ✓ Ссылка скопирована!
+            </div>
+          )}
+        </div>
       </div>
 
       <VideoPlayer roomId={roomId} videoUrl={videoUrl} />
@@ -308,6 +317,7 @@ const styles = {
     gap: '8px',
     fontSize: '13px',
     color: '#ccc',
+    padding: '3px 0',
   },
   userDot: {
     width: '8px',
@@ -334,6 +344,24 @@ const styles = {
     padding: '20px',
     background: '#1a1a1a',
     borderRadius: '8px',
+  },
+  copyButtonContainer: {
+    position: 'relative',
+  },
+  copyToast: {
+    position: 'absolute',
+    bottom: '100%',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    marginBottom: '10px',
+    padding: '8px 16px',
+    background: '#4CAF50',
+    color: 'white',
+    borderRadius: '6px',
+    fontSize: '14px',
+    whiteSpace: 'nowrap',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    animation: 'fadeIn 0.2s ease-in',
   },
   buttonSecondary: {
     padding: '12px 24px',

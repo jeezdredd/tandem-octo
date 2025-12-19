@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 
 const VIDEO_SOURCES = [
@@ -31,6 +31,7 @@ function VideoSearch({ onSelectVideo }) {
   const [showResults, setShowResults] = useState(false);
   const [showSourceSelect, setShowSourceSelect] = useState(false);
   const [selectedFilm, setSelectedFilm] = useState(null);
+  const searchTimeoutRef = useRef(null);
 
   const isUrl = (text) => {
     try {
@@ -67,11 +68,26 @@ function VideoSearch({ onSelectVideo }) {
   };
 
   const handleInputChange = (e) => {
-    setSearchQuery(e.target.value);
-    if (!e.target.value.trim()) {
+    const value = e.target.value;
+    setSearchQuery(value);
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (!value.trim()) {
       setShowResults(false);
       setSearchResults([]);
+      return;
     }
+
+    if (isUrl(value)) {
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchMovies(value);
+    }, 500);
   };
 
   const handleSearch = () => {
@@ -124,9 +140,7 @@ function VideoSearch({ onSelectVideo }) {
           onKeyPress={handleKeyPress}
           style={styles.input}
         />
-        <button onClick={handleSearch} style={styles.searchButton} disabled={loading}>
-          {loading ? '⏳' : '🔍'}
-        </button>
+        {loading && <div style={styles.loadingIndicator}>⏳</div>}
       </div>
 
       {showSourceSelect && selectedFilm && (
@@ -224,14 +238,12 @@ const styles = {
     border: 'none',
     outline: 'none',
   },
-  searchButton: {
-    padding: '12px 24px',
-    fontSize: '20px',
-    background: '#667eea',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    color: 'white',
+  loadingIndicator: {
+    position: 'absolute',
+    right: '15px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    fontSize: '18px',
   },
   results: {
     position: 'absolute',
