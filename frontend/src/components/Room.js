@@ -134,6 +134,14 @@ function Room() {
           </div>
         </div>
       )}
+      
+      <div style={styles.logoContainer}>
+        <div style={styles.logo}>
+          <span style={styles.logoIcon}>🎬</span>
+          <span style={styles.logoText}>Tandem</span>
+        </div>
+      </div>
+
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Комната: {room?.host_username}</h1>
@@ -186,6 +194,32 @@ const styles = {
     color: 'white',
     padding: '20px',
     position: 'relative',
+  },
+  logoContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '20px',
+  },
+  logo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontSize: '28px',
+    fontWeight: 'bold',
+    background: 'linear-gradient(270deg, #667eea, #764ba2, #f093fb, #4facfe, #667eea)',
+    backgroundSize: '400% 400%',
+    animation: 'gradientShift 8s ease infinite',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  },
+  logoIcon: {
+    fontSize: '32px',
+    filter: 'drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3))',
+    animation: 'iconPulse 3s ease-in-out infinite',
+  },
+  logoText: {
+    letterSpacing: '2px',
   },
   reconnectOverlay: {
     position: 'fixed',
