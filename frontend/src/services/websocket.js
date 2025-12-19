@@ -34,11 +34,26 @@ class WebSocketService {
   }
 
   connect(roomId, username = 'Guest') {
-    // Close existing connection if any
-    if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
-      this.socket.close();
+    // Prevent rapid reconnects
+    if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket already connecting, skipping...');
+      return;
     }
 
+    // Close existing connection if any WITHOUT triggering reconnect
+    if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+      console.log('Closing existing WebSocket before reconnect');
+      this.shouldReconnect = false; // Отключаем автореконнект перед закрытием
+      this.socket.close();
+      // Даём время на закрытие
+      setTimeout(() => this._createConnection(roomId, username), 100);
+      return;
+    }
+
+    this._createConnection(roomId, username);
+  }
+
+  _createConnection(roomId, username) {
     this.roomId = roomId;
     this.username = username;
     this.shouldReconnect = true;

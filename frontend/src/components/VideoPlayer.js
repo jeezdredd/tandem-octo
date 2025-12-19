@@ -1,10 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import wsService from '../services/websocket';
 import YouTubePlayer from './YouTubePlayer';
+import IframePlayer from './IframePlayer';
 
 function VideoPlayer({ roomId, videoUrl }) {
   const ytPlayerRef = useRef(null);
   const videoRef = useRef(null);
+  const iframePlayerRef = useRef(null);
   const isSyncingRef = useRef(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -18,14 +20,39 @@ function VideoPlayer({ roomId, videoUrl }) {
     return (match && match[7].length === 11) ? match[7] : null;
   };
 
+  const isIframeEmbed = (url) => {
+    if (!url) return false;
+    // Проверяем известные embed сервисы
+    const embedDomains = [
+      'obrut.show',
+      'short.gy', 
+      'cdnmovies.net',
+      'vibix.me',
+      'kodik',
+      'videocdn',
+      'bazon',
+      'collaps',
+      '2embed',
+      'vidsrc',
+      'kinobox',
+      'hdvb',
+      'alloha'
+    ];
+    return embedDomains.some(domain => url.includes(domain));
+  };
+
   const youtubeId = getYouTubeId(videoUrl);
   const isDirectVideo = videoUrl && (videoUrl.includes('.mp4') || videoUrl.includes('.webm') || videoUrl.includes('.ogg'));
-  const videoType = youtubeId ? 'YouTube' : (isDirectVideo ? 'HTML5' : 'Unknown');
+  const isEmbed = isIframeEmbed(videoUrl);
+  
+  const videoType = youtubeId ? 'YouTube' : (isDirectVideo ? 'HTML5' : (isEmbed ? 'Embed Player' : 'Unknown'));
+
 
   useEffect(() => {
     console.log('VideoPlayer: videoUrl changed, resetting player refs');
     ytPlayerRef.current = null;
     videoRef.current = null;
+    iframePlayerRef.current = null;
     isSyncingRef.current = false;
     lastTimeRef.current = 0;
     pendingRoomStateRef.current = null;
@@ -36,7 +63,6 @@ function VideoPlayer({ roomId, videoUrl }) {
   useEffect(() => {
     const handleWSPlay = (data) => {
       console.log('WebSocket: received play event', data);
-      console.log('Current state: youtubeId=', youtubeId, 'ytPlayerRef.current=', ytPlayerRef.current);
 
       isSyncingRef.current = true;
       setIsPlaying(true);
@@ -51,12 +77,16 @@ function VideoPlayer({ roomId, videoUrl }) {
         } catch (e) {
           console.error('Error controlling YouTube player:', e);
         }
+      } else if (isEmbed && iframePlayerRef.current) {
+        console.log('Controlling iframe player');
+        if (iframePlayerRef.current.seekTo) iframePlayerRef.current.seekTo(time);
+        if (iframePlayerRef.current.play) iframePlayerRef.current.play();
       } else if (isDirectVideo && videoRef.current) {
         console.log('Controlling HTML5 video');
         videoRef.current.currentTime = time;
         videoRef.current.play();
       } else {
-        console.log('WARNING: No player available! youtubeId=', youtubeId, 'ytPlayerRef.current=', ytPlayerRef.current);
+        console.log('WARNING: No player available!');
       }
 
       setTimeout(() => { isSyncingRef.current = false; }, 1000);
@@ -72,6 +102,9 @@ function VideoPlayer({ roomId, videoUrl }) {
       if (youtubeId && ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
         ytPlayerRef.current.seekTo(time, true);
         ytPlayerRef.current.pauseVideo();
+      } else if (isEmbed && iframePlayerRef.current) {
+        if (iframePlayerRef.current.seekTo) iframePlayerRef.current.seekTo(time);
+        if (iframePlayerRef.current.pause) iframePlayerRef.current.pause();
       } else if (isDirectVideo && videoRef.current) {
         videoRef.current.currentTime = time;
         videoRef.current.pause();
@@ -88,6 +121,8 @@ function VideoPlayer({ roomId, videoUrl }) {
 
       if (youtubeId && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
         ytPlayerRef.current.seekTo(time, true);
+      } else if (isEmbed && iframePlayerRef.current && iframePlayerRef.current.seekTo) {
+        iframePlayerRef.current.seekTo(time);
       } else if (isDirectVideo && videoRef.current) {
         videoRef.current.currentTime = time;
       }
@@ -147,7 +182,7 @@ function VideoPlayer({ roomId, videoUrl }) {
       wsService.off('seek', handleWSSeek);
       wsService.off('room_state', handleRoomState);
     };
-  }, [youtubeId, isDirectVideo]);
+  }, [youtubeId, isDirectVideo, isEmbed]);
 
   const handleProgress = (time) => {
     if (!isSyncingRef.current) {
@@ -164,12 +199,12 @@ function VideoPlayer({ roomId, videoUrl }) {
   const getCurrentPlayerTime = () => {
     if (ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
       const playerTime = ytPlayerRef.current.getCurrentTime();
-      // If player returns 0 but we have a saved time, use the saved time
-      // This happens when user clicks play before player has seeked to the correct position
       if (playerTime === 0 && lastTimeRef.current > 0) {
         return lastTimeRef.current;
       }
       return playerTime;
+    } else if (iframePlayerRef.current && typeof iframePlayerRef.current.getCurrentTime === 'function') {
+      return iframePlayerRef.current.getCurrentTime();
     } else if (videoRef.current) {
       const playerTime = videoRef.current.currentTime;
       if (playerTime === 0 && lastTimeRef.current > 0) {
@@ -232,7 +267,7 @@ function VideoPlayer({ roomId, videoUrl }) {
     return (
       <div style={styles.placeholder}>
         <p>Видео не выбрано</p>
-        <p style={styles.hint}>Вставьте ссылку на YouTube или прямую ссылку на видео (.mp4, .webm)</p>
+        <p style={styles.hint}>Введите название фильма для поиска или вставьте ссылку</p>
       </div>
     );
   }
@@ -243,8 +278,17 @@ function VideoPlayer({ roomId, videoUrl }) {
         <p style={{color: 'white', marginBottom: '10px'}}>
           Тип: {videoType} | Время: {currentTime.toFixed(1)}с
         </p>
-        <div style={{ background: '#000', borderRadius: '8px' }}>
-          {isDirectVideo ? (
+        <div style={{ background: '#000', borderRadius: '8px', overflow: 'hidden' }}>
+          {isEmbed ? (
+            <IframePlayer
+              ref={iframePlayerRef}
+              src={videoUrl}
+              onReady={() => console.log('IframePlayer ready')}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onProgress={handleProgress}
+            />
+          ) : isDirectVideo ? (
             <video
               ref={videoRef}
               src={videoUrl}

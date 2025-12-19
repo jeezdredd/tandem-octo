@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { roomAPI } from '../services/api';
 import wsService from '../services/websocket';
 import VideoPlayer from './VideoPlayer';
-import VideoLibrary from './VideoLibrary';
+import VideoSearch from './VideoSearch';
 
 const generateUsername = () => {
   const adjectives = ['Red', 'Blue', 'Green', 'Purple', 'Orange', 'Yellow', 'Pink', 'Cyan', 'Magenta', 'Lime', 'Indigo', 'Violet'];
@@ -37,12 +37,16 @@ function Room() {
 
   useEffect(() => {
     loadRoom();
+  }, [roomId]);
+
+  useEffect(() => {
     connectWebSocket();
 
     return () => {
+      console.log('Cleaning up WebSocket connection');
       wsService.disconnect();
     };
-  }, [roomId]);
+  }, [roomId]); // Убрал username из зависимостей
 
   const loadRoom = async () => {
     try {
@@ -101,17 +105,13 @@ function Room() {
     });
   };
 
-  const handleSetVideo = () => {
-    if (inputUrl.trim()) {
-      setVideoUrl(inputUrl);
-      wsService.sendVideoChange(inputUrl);
+  const handleSetVideo = (url, title) => {
+    if (url && url.trim()) {
+      console.log('Setting video:', url, title);
+      setVideoUrl(url);
+      setInputUrl(url);
+      wsService.sendVideoChange(url);
     }
-  };
-
-  const handleSelectFromLibrary = (url, title) => {
-    setVideoUrl(url);
-    setInputUrl(url);
-    wsService.sendVideoChange(url);
   };
 
   const copyRoomLink = () => {
@@ -161,17 +161,7 @@ function Room() {
       </div>
 
       <div style={styles.controls}>
-        <input
-          type="text"
-          placeholder="Paste video URL (e.g., .mp4, YouTube link)"
-          value={inputUrl}
-          onChange={(e) => setInputUrl(e.target.value)}
-          style={styles.input}
-        />
-        <button onClick={handleSetVideo} style={styles.button}>
-          Load Video
-        </button>
-        <VideoLibrary onSelectVideo={handleSelectFromLibrary} />
+        <VideoSearch onSelectVideo={handleSetVideo} />
         <button onClick={copyRoomLink} style={styles.buttonSecondary}>
           📋 Copy Room Link
         </button>
@@ -305,27 +295,11 @@ const styles = {
   controls: {
     display: 'flex',
     gap: '10px',
+    alignItems: 'center',
     marginBottom: '20px',
     padding: '20px',
     background: '#1a1a1a',
     borderRadius: '8px',
-  },
-  input: {
-    flex: 1,
-    padding: '12px',
-    fontSize: '14px',
-    borderRadius: '6px',
-    border: 'none',
-  },
-  button: {
-    padding: '12px 24px',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: 'white',
-    background: '#667eea',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
   },
   buttonSecondary: {
     padding: '12px 24px',
