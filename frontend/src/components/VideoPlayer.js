@@ -4,7 +4,7 @@ import YouTubePlayer from './YouTubePlayer';
 import IframePlayer from './IframePlayer';
 import ObutPlayer from './ObutPlayer';
 
-function VideoPlayer({ roomId, videoUrl }) {
+function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo }) {
   const ytPlayerRef = useRef(null);
   const videoRef = useRef(null);
   const iframePlayerRef = useRef(null);
@@ -316,9 +316,20 @@ function VideoPlayer({ roomId, videoUrl }) {
   return (
     <div style={styles.container}>
       <div>
-        <p style={{color: 'white', marginBottom: '10px'}}>
-          Тип: {videoType} | Время: {currentTime.toFixed(1)}с
-        </p>
+        {videoTitle && (
+          <div style={styles.videoHeader}>
+            <div style={styles.videoInfo}>
+              <div style={styles.videoTitle}>{videoTitle}</div>
+              <div style={styles.videoSource}>
+                <span style={styles.sourceBadge}>{videoType}</span>
+                <span style={styles.timeBadge}>⏱ {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')}</span>
+              </div>
+            </div>
+            <button onClick={onClearVideo} style={styles.clearButton} title="Убрать видео">
+              ✕
+            </button>
+          </div>
+        )}
         <div style={{ background: '#000', borderRadius: '8px', overflow: 'hidden' }}>
           {isObut ? (
             <ObutPlayer
@@ -374,6 +385,68 @@ const styles = {
     width: '100%',
     maxWidth: '1200px',
     margin: '0 auto',
+  },
+  videoHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '15px 20px',
+    background: '#1a1a1a',
+    borderRadius: '8px 8px 0 0',
+    marginBottom: '-8px',
+    position: 'relative',
+    zIndex: 1,
+  },
+  videoInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  videoTitle: {
+    color: 'white',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    marginBottom: '8px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  videoSource: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center',
+  },
+  sourceBadge: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    background: '#667eea',
+    color: 'white',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    borderRadius: '12px',
+  },
+  timeBadge: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    background: '#2a2a2a',
+    color: '#ccc',
+    fontSize: '12px',
+    borderRadius: '12px',
+  },
+  clearButton: {
+    background: '#f44336',
+    border: 'none',
+    color: 'white',
+    fontSize: '20px',
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginLeft: '15px',
+    transition: 'background 0.2s',
   },
   placeholder: {
     width: '100%',

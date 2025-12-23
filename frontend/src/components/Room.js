@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { roomAPI } from '../services/api';
 import wsService from '../services/websocket';
 import VideoPlayer from './VideoPlayer';
 import VideoSearch from './VideoSearch';
+import { useLanguage } from '../i18n/LanguageContext';
+import LanguageSwitch from './LanguageSwitch';
 
 const generateUsername = () => {
   const adjectives = ['Red', 'Blue', 'Green', 'Purple', 'Orange', 'Yellow', 'Pink', 'Cyan', 'Magenta', 'Lime', 'Indigo', 'Violet'];
@@ -26,19 +28,33 @@ function Room() {
   const { roomId } = useParams();
   const [searchParams] = useSearchParams();
   const username = searchParams.get('username') || getOrCreateUsername();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
 
   const [room, setRoom] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
   const [inputUrl, setInputUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [showRoomIdCopyToast, setShowRoomIdCopyToast] = useState(false);
+  const [isControlsCollapsed, setIsControlsCollapsed] = useState(false);
 
   useEffect(() => {
     loadRoom();
   }, [roomId]);
+
+  useEffect(() => {
+    // Автоматически сворачиваем контролы когда есть видео
+    if (videoUrl) {
+      setIsControlsCollapsed(true);
+    } else {
+      setIsControlsCollapsed(false);
+    }
+  }, [videoUrl]);
 
   useEffect(() => {
     connectWebSocket();
@@ -91,6 +107,7 @@ function Room() {
         console.log('Setting video from room state:', data.video_url);
         setVideoUrl(data.video_url);
         setInputUrl(data.video_url);
+        setVideoTitle(t('room.currentVideo'));
       }
     });
 
@@ -101,8 +118,15 @@ function Room() {
 
     wsService.on('video_changed', (data) => {
       console.log('Video changed event received:', data.video_url);
-      setVideoUrl(data.video_url);
-      setInputUrl(data.video_url);
+      if (data.video_url) {
+        setVideoUrl(data.video_url);
+        setInputUrl(data.video_url);
+        setVideoTitle(t('room.fromOtherUser'));
+      } else {
+        setVideoUrl('');
+        setInputUrl('');
+        setVideoTitle('');
+      }
     });
   };
 
@@ -110,9 +134,17 @@ function Room() {
     if (url && url.trim()) {
       console.log('Setting video:', url, title);
       setVideoUrl(url);
+      setVideoTitle(title || t('room.nowPlaying'));
       setInputUrl(url);
       wsService.sendVideoChange(url);
     }
+  };
+
+  const handleClearVideo = () => {
+    setVideoUrl('');
+    setVideoTitle('');
+    setInputUrl('');
+    wsService.sendVideoChange('');
   };
 
   const copyRoomLink = () => {
@@ -120,6 +152,22 @@ function Room() {
     navigator.clipboard.writeText(link);
     setShowCopyToast(true);
     setTimeout(() => setShowCopyToast(false), 2000);
+  };
+
+  const copyRoomId = () => {
+    navigator.clipboard.writeText(roomId);
+    setShowRoomIdCopyToast(true);
+    setTimeout(() => setShowRoomIdCopyToast(false), 2000);
+  };
+
+  const goHome = () => {
+    // Сохраняем информацию о комнате перед уходом
+    localStorage.setItem('tandem_last_room', JSON.stringify({
+      roomId,
+      username,
+      timestamp: Date.now(),
+    }));
+    navigate('/');
   };
 
   if (loading) {
@@ -132,27 +180,30 @@ function Room() {
         <div style={styles.reconnectOverlay}>
           <div style={styles.reconnectBox}>
             <div style={styles.spinner} />
-            <p style={styles.reconnectText}>Connection lost. Attempting to reconnect...</p>
+            <p style={styles.reconnectText}>{t('room.reconnecting')}</p>
           </div>
         </div>
       )}
-      
+
       <div style={styles.logoContainer}>
-        <div style={styles.logo}>
+        <div style={styles.logo} onClick={goHome}>
           <span style={styles.logoIcon}>🎬</span>
           <span style={styles.logoText}>Tandem</span>
+        </div>
+        <div style={styles.logoLanguageSwitch}>
+          <LanguageSwitch />
         </div>
       </div>
 
       <div style={styles.header}>
         <div>
-          <h1 style={styles.title}>Комната: {room?.host_username}</h1>
-          <p style={styles.username}>Вы: {username}</p>
+          <h1 style={styles.title}>{t('room.roomTitle')} {room?.host_username}</h1>
+          <p style={styles.username}>{t('room.you')} {username}</p>
         </div>
         <div style={styles.rightSection}>
           <div style={styles.usersSection}>
             <div style={styles.usersHeader}>
-              Участники ({connectedUsers.length})
+              {t('room.participants')} ({connectedUsers.length})
             </div>
             <div style={styles.usersList}>
               {connectedUsers.map((user, index) => (
@@ -165,31 +216,58 @@ function Room() {
           </div>
           <div style={styles.status}>
             <span style={{ ...styles.statusDot, background: connected ? '#4CAF50' : '#f44336' }} />
-            {connected ? 'Подключено' : 'Отключено'}
+            {connected ? t('room.connected') : t('room.disconnected')}
           </div>
         </div>
       </div>
 
-      <div style={styles.controls}>
-        <VideoSearch onSelectVideo={handleSetVideo} />
-        <div style={styles.copyButtonContainer}>
-          <button onClick={copyRoomLink} style={styles.buttonSecondary}>
-            Copy Room Link
-          </button>
-          {showCopyToast && (
-            <div style={styles.copyToast}>
-              ✓ Ссылка скопирована!
+      <div style={isControlsCollapsed ? styles.controlsCollapsed : styles.controls}>
+        {!isControlsCollapsed && (
+          <>
+            <VideoSearch onSelectVideo={handleSetVideo} />
+            <div style={styles.copyButtons}>
+              <div style={styles.copyButtonContainer}>
+                <button onClick={copyRoomLink} style={styles.buttonSecondary}>
+                  {t('home.copyRoomLink')}
+                </button>
+                {showCopyToast && (
+                  <div style={styles.copyToast}>
+                    {t('home.linkCopied')}
+                  </div>
+                )}
+              </div>
+              <div style={styles.copyButtonContainer}>
+                <button onClick={copyRoomId} style={styles.buttonSecondary}>
+                  {t('room.copyRoomId')}
+                </button>
+                {showRoomIdCopyToast && (
+                  <div style={styles.copyToast}>
+                    {t('room.idCopied')}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
+        <button
+          onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
+          style={styles.toggleButton}
+          title={isControlsCollapsed ? t('room.showControls') : t('room.hideControls')}
+        >
+          {isControlsCollapsed ? '▼' : '▲'}
+        </button>
       </div>
 
-      <VideoPlayer roomId={roomId} videoUrl={videoUrl} />
+      <VideoPlayer
+        roomId={roomId}
+        videoUrl={videoUrl}
+        videoTitle={videoTitle}
+        onClearVideo={handleClearVideo}
+      />
 
       <div style={styles.info}>
         <p style={styles.infoText}>
-          💡 <strong>Tip:</strong> Share the room link with friends to watch together!
-          Play, pause, and seek will be synced automatically.
+          💡 <strong>{t('room.tip')}</strong> {t('room.tipText')}
         </p>
       </div>
     </div>
@@ -207,7 +285,13 @@ const styles = {
   logoContainer: {
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: '20px',
+    position: 'relative',
+  },
+  logoLanguageSwitch: {
+    position: 'absolute',
+    right: '20px',
   },
   logo: {
     display: 'flex',
@@ -221,6 +305,9 @@ const styles = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
+    cursor: 'pointer',
+    transition: 'transform 0.2s ease',
+    userSelect: 'none',
   },
   logoIcon: {
     fontSize: '32px',
@@ -344,6 +431,32 @@ const styles = {
     padding: '20px',
     background: '#1a1a1a',
     borderRadius: '8px',
+    transition: 'all 0.3s ease',
+  },
+  controlsCollapsed: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: '20px',
+    padding: '8px',
+    background: '#1a1a1a',
+    borderRadius: '8px',
+    transition: 'all 0.3s ease',
+  },
+  toggleButton: {
+    padding: '8px 12px',
+    fontSize: '16px',
+    color: '#888',
+    background: 'transparent',
+    border: '1px solid #333',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    marginLeft: 'auto',
+  },
+  copyButtons: {
+    display: 'flex',
+    gap: '10px',
   },
   copyButtonContainer: {
     position: 'relative',
