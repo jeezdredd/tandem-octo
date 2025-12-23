@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import wsService from '../services/websocket';
 import YouTubePlayer from './YouTubePlayer';
 import IframePlayer from './IframePlayer';
+import ObutPlayer from './ObutPlayer';
 
 function VideoPlayer({ roomId, videoUrl }) {
   const ytPlayerRef = useRef(null);
@@ -20,12 +21,16 @@ function VideoPlayer({ roomId, videoUrl }) {
     return (match && match[7].length === 11) ? match[7] : null;
   };
 
+  const isObutSource = (url) => {
+    if (!url) return false;
+    const obutDomains = ['obrut.show', 'wparty'];
+    return obutDomains.some(domain => url.includes(domain));
+  };
+
   const isIframeEmbed = (url) => {
     if (!url) return false;
-    // Проверяем известные embed сервисы
     const embedDomains = [
-      'obrut.show',
-      'short.gy', 
+      'short.gy',
       'cdnmovies.net',
       'vibix.me',
       'kodik',
@@ -43,9 +48,10 @@ function VideoPlayer({ roomId, videoUrl }) {
 
   const youtubeId = getYouTubeId(videoUrl);
   const isDirectVideo = videoUrl && (videoUrl.includes('.mp4') || videoUrl.includes('.webm') || videoUrl.includes('.ogg'));
+  const isObut = isObutSource(videoUrl);
   const isEmbed = isIframeEmbed(videoUrl);
-  
-  const videoType = youtubeId ? 'YouTube' : (isDirectVideo ? 'HTML5' : (isEmbed ? 'Embed Player' : 'Unknown'));
+
+  const videoType = youtubeId ? 'YouTube' : (isDirectVideo ? 'HTML5' : (isObut ? 'Obut Player' : (isEmbed ? 'Embed Player' : 'Unknown')));
 
 
   useEffect(() => {
@@ -77,8 +83,8 @@ function VideoPlayer({ roomId, videoUrl }) {
         } catch (e) {
           console.error('Error controlling YouTube player:', e);
         }
-      } else if (isEmbed && iframePlayerRef.current) {
-        console.log('Controlling iframe player');
+      } else if ((isObut || isEmbed) && iframePlayerRef.current) {
+        console.log('Controlling Obut/Iframe player');
         if (iframePlayerRef.current.seekTo) iframePlayerRef.current.seekTo(time);
         if (iframePlayerRef.current.play) iframePlayerRef.current.play();
       } else if (isDirectVideo && videoRef.current) {
@@ -102,7 +108,8 @@ function VideoPlayer({ roomId, videoUrl }) {
       if (youtubeId && ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
         ytPlayerRef.current.seekTo(time, true);
         ytPlayerRef.current.pauseVideo();
-      } else if (isEmbed && iframePlayerRef.current) {
+      } else if ((isObut || isEmbed) && iframePlayerRef.current) {
+        console.log('Controlling Obut/Iframe player pause');
         if (iframePlayerRef.current.seekTo) iframePlayerRef.current.seekTo(time);
         if (iframePlayerRef.current.pause) iframePlayerRef.current.pause();
       } else if (isDirectVideo && videoRef.current) {
@@ -121,7 +128,8 @@ function VideoPlayer({ roomId, videoUrl }) {
 
       if (youtubeId && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
         ytPlayerRef.current.seekTo(time, true);
-      } else if (isEmbed && iframePlayerRef.current && iframePlayerRef.current.seekTo) {
+      } else if ((isObut || isEmbed) && iframePlayerRef.current && iframePlayerRef.current.seekTo) {
+        console.log('Controlling Obut/Iframe player seek');
         iframePlayerRef.current.seekTo(time);
       } else if (isDirectVideo && videoRef.current) {
         videoRef.current.currentTime = time;
@@ -152,6 +160,16 @@ function VideoPlayer({ roomId, videoUrl }) {
           } else {
             ytPlayerRef.current.pauseVideo();
           }
+        } else if ((isObut || isEmbed) && iframePlayerRef.current) {
+          console.log('Controlling Obut/Iframe player from room_state');
+          if (data.current_time !== undefined && iframePlayerRef.current.seekTo) {
+            iframePlayerRef.current.seekTo(data.current_time);
+          }
+          if (data.is_playing && iframePlayerRef.current.play) {
+            iframePlayerRef.current.play();
+          } else if (!data.is_playing && iframePlayerRef.current.pause) {
+            iframePlayerRef.current.pause();
+          }
         } else if (isDirectVideo && videoRef.current) {
           if (data.current_time !== undefined) {
             videoRef.current.currentTime = data.current_time;
@@ -161,9 +179,9 @@ function VideoPlayer({ roomId, videoUrl }) {
           } else {
             videoRef.current.pause();
           }
-        } else if (youtubeId) {
+        } else if (youtubeId || isObut || isEmbed) {
           // Player not ready yet, save state for later
-          console.log('VideoPlayer: YouTube player not ready, saving room_state for later');
+          console.log('VideoPlayer: Player not ready, saving room_state for later');
           pendingRoomStateRef.current = data;
         }
       }
@@ -182,12 +200,14 @@ function VideoPlayer({ roomId, videoUrl }) {
       wsService.off('seek', handleWSSeek);
       wsService.off('room_state', handleRoomState);
     };
-  }, [youtubeId, isDirectVideo, isEmbed]);
+  }, [youtubeId, isDirectVideo, isObut, isEmbed]);
 
   const handleProgress = (time) => {
     if (!isSyncingRef.current) {
       const timeDiff = Math.abs(time - lastTimeRef.current);
-      if (timeDiff > 1) {
+      const isForwardProgress = time > lastTimeRef.current && timeDiff <= 2;
+
+      if (timeDiff > 1 && !isForwardProgress) {
         console.log('Seek detected! Sending seek event');
         wsService.sendSeek(time, isPlaying);
       }
@@ -263,6 +283,27 @@ function VideoPlayer({ roomId, videoUrl }) {
     }
   };
 
+  const handleIframeReady = () => {
+    console.log('Iframe/Obut player ready');
+
+    if (pendingRoomStateRef.current && iframePlayerRef.current) {
+      console.log('Applying pending room state to iframe player:', pendingRoomStateRef.current);
+      const data = pendingRoomStateRef.current;
+      pendingRoomStateRef.current = null;
+
+      isSyncingRef.current = true;
+      if (data.current_time !== undefined && iframePlayerRef.current.seekTo) {
+        iframePlayerRef.current.seekTo(data.current_time);
+      }
+      if (data.is_playing && iframePlayerRef.current.play) {
+        iframePlayerRef.current.play();
+      } else if (!data.is_playing && iframePlayerRef.current.pause) {
+        iframePlayerRef.current.pause();
+      }
+      setTimeout(() => { isSyncingRef.current = false; }, 1000);
+    }
+  };
+
   if (!videoUrl) {
     return (
       <div style={styles.placeholder}>
@@ -279,11 +320,20 @@ function VideoPlayer({ roomId, videoUrl }) {
           Тип: {videoType} | Время: {currentTime.toFixed(1)}с
         </p>
         <div style={{ background: '#000', borderRadius: '8px', overflow: 'hidden' }}>
-          {isEmbed ? (
+          {isObut ? (
+            <ObutPlayer
+              ref={iframePlayerRef}
+              src={videoUrl}
+              onReady={handleIframeReady}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onProgress={handleProgress}
+            />
+          ) : isEmbed ? (
             <IframePlayer
               ref={iframePlayerRef}
               src={videoUrl}
-              onReady={() => console.log('IframePlayer ready')}
+              onReady={handleIframeReady}
               onPlay={handlePlay}
               onPause={handlePause}
               onProgress={handleProgress}

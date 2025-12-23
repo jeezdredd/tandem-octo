@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
-function IframePlayer({ src, onPlay, onPause, onProgress, onReady }) {
+const IframePlayer = forwardRef(({ src, onPlay, onPause, onProgress, onReady }, ref) => {
   const iframeRef = useRef(null);
   const lastTimeRef = useRef(0);
   const playerReadyRef = useRef(false);
@@ -99,27 +99,25 @@ function IframePlayer({ src, onPlay, onPause, onProgress, onReady }) {
       window.removeEventListener('message', handleMessage);
       clearTimeout(timer);
     };
-  }, [src, onPlay, onPause, onProgress, onReady]);
+  }, [src]);
 
   const sendCommand = (method, value) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
-      const message = value !== undefined 
+      const message = value !== undefined
         ? JSON.stringify({ method, value })
         : JSON.stringify({ method });
-      
+
       console.log('Sending command:', message);
       iframeRef.current.contentWindow.postMessage(message, '*');
     }
   };
 
-  useEffect(() => {
-    if (iframeRef.current) {
-      iframeRef.current.play = () => sendCommand('play');
-      iframeRef.current.pause = () => sendCommand('pause');
-      iframeRef.current.seekTo = (time) => sendCommand('setCurrentTime', time);
-      iframeRef.current.getCurrentTime = () => lastTimeRef.current;
-    }
-  }, []);
+  useImperativeHandle(ref, () => ({
+    play: () => sendCommand('play'),
+    pause: () => sendCommand('pause'),
+    seekTo: (time) => sendCommand('setCurrentTime', time),
+    getCurrentTime: () => lastTimeRef.current
+  }));
 
   return (
     <iframe
@@ -133,6 +131,6 @@ function IframePlayer({ src, onPlay, onPause, onProgress, onReady }) {
       style={{ display: 'block' }}
     />
   );
-}
+});
 
 export default IframePlayer;
