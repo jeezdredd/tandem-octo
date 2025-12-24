@@ -156,6 +156,19 @@ class WebSocketService {
     }
   }
 
+  sendUsernameChange(newUsername) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      console.log('WebSocketService: Sending username_change event, username:', newUsername);
+      this.username = newUsername;
+      this.socket.send(JSON.stringify({
+        type: 'username_change',
+        username: newUsername,
+      }));
+    } else {
+      console.error('WebSocketService: Cannot send username_change - socket not ready', this.socket?.readyState);
+    }
+  }
+
   on(event, callback) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];

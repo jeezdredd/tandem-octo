@@ -117,6 +117,14 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 },
             )
 
+        elif event_type == "username_change":
+            new_username = data.get("username", "Guest")
+            logger.info(f"User changing username from {self.username} to {new_username}")
+            self.username = new_username
+            if self.room_id in room_users and self.channel_name in room_users[self.room_id]:
+                room_users[self.room_id][self.channel_name] = new_username
+                await self.broadcast_user_list()
+
     async def video_event(self, event):
         logger.info(f"video_event called: event={event['event']}, sender={event.get('sender_channel')}, self={self.channel_name}")
         if event.get("sender_channel") != self.channel_name:

@@ -130,8 +130,10 @@ function VideoSearch({ onSelectVideo }) {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.searchBox}>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: hoverStyles }} />
+      <div style={styles.container}>
+        <div style={styles.searchBox}>
         <input
           type="text"
           placeholder="Введите название фильма или вставьте ссылку..."
@@ -147,7 +149,7 @@ function VideoSearch({ onSelectVideo }) {
         <div style={styles.results}>
           <div style={styles.resultsHeader}>
             <span>Выберите источник для: {selectedFilm.nameRu || selectedFilm.nameEn}</span>
-            <button onClick={() => { setShowSourceSelect(false); setSelectedFilm(null); }} style={styles.closeButton}>
+            <button className="close-button" onClick={() => { setShowSourceSelect(false); setSelectedFilm(null); }} style={styles.closeButton}>
               ✕
             </button>
           </div>
@@ -155,6 +157,7 @@ function VideoSearch({ onSelectVideo }) {
             {VIDEO_SOURCES.map((source) => (
               <div
                 key={source.id}
+                className="source-item"
                 style={styles.sourceItem}
                 onClick={() => selectSource(source)}
               >
@@ -170,7 +173,7 @@ function VideoSearch({ onSelectVideo }) {
         <div style={styles.results}>
           <div style={styles.resultsHeader}>
             <span>Найдено: {searchResults.length}</span>
-            <button onClick={() => setShowResults(false)} style={styles.closeButton}>
+            <button className="close-button" onClick={() => setShowResults(false)} style={styles.closeButton}>
               ✕
             </button>
           </div>
@@ -178,6 +181,7 @@ function VideoSearch({ onSelectVideo }) {
             {searchResults.map((film) => (
               <div
                 key={film.filmId}
+                className="result-item"
                 style={styles.resultItem}
                 onClick={() => selectMovie(film)}
               >
@@ -217,8 +221,21 @@ function VideoSearch({ onSelectVideo }) {
         </div>
       )}
     </div>
+    </>
   );
 }
+
+const hoverStyles = `
+  .result-item:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+  .source-item:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+  .close-button:hover {
+    color: #FFFFFF !important;
+  }
+`;
 
 const styles = {
   container: {
@@ -232,11 +249,14 @@ const styles = {
   },
   input: {
     flex: 1,
-    padding: '12px',
-    fontSize: '14px',
-    borderRadius: '6px',
+    padding: '12px 16px',
+    fontSize: '15px',
+    borderRadius: '8px',
     border: 'none',
     outline: 'none',
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: '#FFFFFF',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
   },
   loadingIndicator: {
     position: 'absolute',
@@ -250,31 +270,34 @@ const styles = {
     top: '100%',
     left: 0,
     right: 0,
-    marginTop: '10px',
-    background: '#1a1a1a',
-    borderRadius: '8px',
-    border: '1px solid #333',
+    marginTop: '12px',
+    background: 'rgba(28, 28, 30, 0.95)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     maxHeight: '500px',
     overflow: 'hidden',
     zIndex: 100,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
   },
   resultsHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '15px',
-    borderBottom: '1px solid #333',
-    color: '#ccc',
-    fontSize: '14px',
+    padding: '16px 20px',
+    borderBottom: '1px solid rgba(84, 84, 88, 0.3)',
+    color: '#FFFFFF',
+    fontSize: '15px',
+    fontWeight: '600',
   },
   closeButton: {
     background: 'transparent',
     border: 'none',
-    color: 'white',
-    fontSize: '20px',
+    color: '#8E8E93',
+    fontSize: '22px',
     cursor: 'pointer',
-    padding: '0',
+    padding: '4px',
+    transition: 'color 0.2s ease',
   },
   resultsList: {
     maxHeight: '440px',
@@ -282,11 +305,11 @@ const styles = {
   },
   resultItem: {
     display: 'flex',
-    gap: '15px',
-    padding: '15px',
+    gap: '16px',
+    padding: '16px 20px',
     cursor: 'pointer',
-    transition: 'background 0.2s',
-    borderBottom: '1px solid #2a2a2a',
+    transition: 'background 0.2s ease',
+    borderBottom: '1px solid rgba(84, 84, 88, 0.2)',
   },
   poster: {
     width: '60px',
@@ -302,20 +325,21 @@ const styles = {
     gap: '5px',
   },
   movieTitle: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: '16px',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   movieYear: {
-    color: '#888',
+    color: '#8E8E93',
     fontSize: '14px',
   },
   movieRating: {
     color: '#FFD700',
     fontSize: '14px',
+    fontWeight: '500',
   },
   movieGenres: {
-    color: '#aaa',
+    color: '#AEAEB2',
     fontSize: '13px',
   },
   noResults: {
@@ -323,36 +347,38 @@ const styles = {
     top: '100%',
     left: 0,
     right: 0,
-    marginTop: '10px',
-    padding: '20px',
-    background: '#1a1a1a',
-    borderRadius: '8px',
-    border: '1px solid #333',
-    color: '#888',
+    marginTop: '12px',
+    padding: '32px 20px',
+    background: 'rgba(28, 28, 30, 0.95)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    color: '#8E8E93',
     textAlign: 'center',
     zIndex: 100,
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
   },
   sourceList: {
-    padding: '10px',
+    padding: '12px 16px',
   },
   sourceItem: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '15px',
-    background: '#2a2a2a',
-    borderRadius: '8px',
-    marginBottom: '10px',
+    padding: '16px 20px',
+    background: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: '10px',
+    marginBottom: '8px',
     cursor: 'pointer',
-    transition: 'background 0.2s',
+    transition: 'background 0.2s ease',
   },
   sourceName: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: '16px',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   sourceArrow: {
-    color: '#667eea',
+    color: '#007AFF',
     fontSize: '20px',
   },
 };

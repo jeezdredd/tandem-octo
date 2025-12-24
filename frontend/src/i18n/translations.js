@@ -47,6 +47,7 @@ export const translations = {
       idCopied: '✓ ID copied!',
       showControls: 'Show Controls',
       hideControls: 'Hide Controls',
+      editUsername: 'Click to edit your username',
     },
   },
   ru: {
@@ -97,6 +98,7 @@ export const translations = {
       idCopied: '✓ ID скопирован!',
       showControls: 'Показать управление',
       hideControls: 'Скрыть управление',
+      editUsername: 'Нажмите, чтобы изменить имя',
     },
   },
 };
