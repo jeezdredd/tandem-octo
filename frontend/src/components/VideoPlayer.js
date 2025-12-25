@@ -4,7 +4,7 @@ import YouTubePlayer from './YouTubePlayer';
 import IframePlayer from './IframePlayer';
 import ObutPlayer from './ObutPlayer';
 
-function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo }) {
+function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo, initialRoomState }) {
   const ytPlayerRef = useRef(null);
   const videoRef = useRef(null);
   const iframePlayerRef = useRef(null);
@@ -13,6 +13,7 @@ function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const lastTimeRef = useRef(0);
   const pendingRoomStateRef = useRef(null);
+  const initialRoomStateAppliedRef = useRef(false);
 
   const getYouTubeId = (url) => {
     if (!url) return null;
@@ -62,9 +63,56 @@ function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo }) {
     isSyncingRef.current = false;
     lastTimeRef.current = 0;
     pendingRoomStateRef.current = null;
+    initialRoomStateAppliedRef.current = false;
     setIsPlaying(false);
     setCurrentTime(0);
   }, [videoUrl]);
+
+  useEffect(() => {
+    if (initialRoomState && videoUrl && !initialRoomStateAppliedRef.current) {
+      console.log('VideoPlayer: Storing initial room state from prop:', initialRoomState);
+      pendingRoomStateRef.current = initialRoomState;
+      initialRoomStateAppliedRef.current = false;
+    }
+  }, [initialRoomState, videoUrl]);
+
+  useEffect(() => {
+    if (isDirectVideo && videoRef.current && pendingRoomStateRef.current && !initialRoomStateAppliedRef.current) {
+      console.log('Applying pending room state to HTML5 video:', pendingRoomStateRef.current);
+      const data = pendingRoomStateRef.current;
+      pendingRoomStateRef.current = null;
+      initialRoomStateAppliedRef.current = true;
+
+      isSyncingRef.current = true;
+
+      const applyState = () => {
+        if (data.current_time !== undefined) {
+          videoRef.current.currentTime = data.current_time;
+          setCurrentTime(data.current_time);
+          lastTimeRef.current = data.current_time;
+        }
+        if (data.is_playing !== undefined) {
+          setIsPlaying(data.is_playing);
+          if (data.is_playing) {
+            videoRef.current.play().catch(err => console.log('Autoplay prevented:', err));
+          } else {
+            videoRef.current.pause();
+          }
+        }
+        setTimeout(() => { isSyncingRef.current = false; }, 1000);
+      };
+
+      if (videoRef.current.readyState >= 2) {
+        applyState();
+      } else {
+        const handleCanPlay = () => {
+          applyState();
+          videoRef.current.removeEventListener('canplay', handleCanPlay);
+        };
+        videoRef.current.addEventListener('canplay', handleCanPlay);
+      }
+    }
+  }, [isDirectVideo]);
 
   useEffect(() => {
     const handleWSPlay = (data) => {
@@ -266,18 +314,24 @@ function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo }) {
 
     // Apply pending room state if player wasn't ready when room_state arrived
     if (pendingRoomStateRef.current) {
-      console.log('Applying pending room state:', pendingRoomStateRef.current);
+      console.log('Applying pending room state to YouTube player:', pendingRoomStateRef.current);
       const data = pendingRoomStateRef.current;
       pendingRoomStateRef.current = null;
+      initialRoomStateAppliedRef.current = true;
 
       isSyncingRef.current = true;
       if (data.current_time !== undefined) {
         player.seekTo(data.current_time, true);
+        setCurrentTime(data.current_time);
+        lastTimeRef.current = data.current_time;
       }
-      if (data.is_playing) {
-        player.playVideo();
-      } else {
-        player.pauseVideo();
+      if (data.is_playing !== undefined) {
+        setIsPlaying(data.is_playing);
+        if (data.is_playing) {
+          player.playVideo();
+        } else {
+          player.pauseVideo();
+        }
       }
       setTimeout(() => { isSyncingRef.current = false; }, 1000);
     }
@@ -290,15 +344,23 @@ function VideoPlayer({ roomId, videoUrl, videoTitle, onClearVideo }) {
       console.log('Applying pending room state to iframe player:', pendingRoomStateRef.current);
       const data = pendingRoomStateRef.current;
       pendingRoomStateRef.current = null;
+      initialRoomStateAppliedRef.current = true;
 
       isSyncingRef.current = true;
-      if (data.current_time !== undefined && iframePlayerRef.current.seekTo) {
-        iframePlayerRef.current.seekTo(data.current_time);
+      if (data.current_time !== undefined) {
+        if (iframePlayerRef.current.seekTo) {
+          iframePlayerRef.current.seekTo(data.current_time);
+        }
+        setCurrentTime(data.current_time);
+        lastTimeRef.current = data.current_time;
       }
-      if (data.is_playing && iframePlayerRef.current.play) {
-        iframePlayerRef.current.play();
-      } else if (!data.is_playing && iframePlayerRef.current.pause) {
-        iframePlayerRef.current.pause();
+      if (data.is_playing !== undefined) {
+        setIsPlaying(data.is_playing);
+        if (data.is_playing && iframePlayerRef.current.play) {
+          iframePlayerRef.current.play();
+        } else if (!data.is_playing && iframePlayerRef.current.pause) {
+          iframePlayerRef.current.pause();
+        }
       }
       setTimeout(() => { isSyncingRef.current = false; }, 1000);
     }

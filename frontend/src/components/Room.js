@@ -60,6 +60,7 @@ function Room() {
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [showRoomIdCopyToast, setShowRoomIdCopyToast] = useState(false);
   const [isControlsCollapsed, setIsControlsCollapsed] = useState(false);
+  const [initialRoomState, setInitialRoomState] = useState(null);
 
   useEffect(() => {
     loadRoom();
@@ -71,6 +72,10 @@ function Room() {
     } else {
       setIsControlsCollapsed(false);
     }
+  }, [videoUrl]);
+
+  useEffect(() => {
+    setInitialRoomState(null);
   }, [videoUrl]);
 
   useEffect(() => {
@@ -127,6 +132,12 @@ function Room() {
 
     wsService.on('room_state', (data) => {
       console.log('Initial room state:', data);
+
+      setInitialRoomState({
+        current_time: data.current_time,
+        is_playing: data.is_playing
+      });
+
       if (data.video_url) {
         console.log('Setting video from room state:', data.video_url);
         setVideoUrl(data.video_url);
@@ -372,6 +383,7 @@ function Room() {
             videoUrl={videoUrl}
             videoTitle={videoTitle}
             onClearVideo={handleClearVideo}
+            initialRoomState={initialRoomState}
           />
 
           <div style={styles.tip}>
