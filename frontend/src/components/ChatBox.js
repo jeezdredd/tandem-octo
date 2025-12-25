@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import wsService from '../services/websocket';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function ChatBox() {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState('');
@@ -61,7 +63,7 @@ function ChatBox() {
     const trimmed = inputText.trim();
     if (!trimmed) return;
     if (trimmed.length > MAX_CHARS) {
-      setError(`Сообщение слишком длинное (макс ${MAX_CHARS} символов)`);
+      setError(t('chat.errorTooLong').replace('{max}', MAX_CHARS));
       setTimeout(() => setError(''), 3000);
       return;
     }
@@ -112,7 +114,10 @@ function ChatBox() {
       <style dangerouslySetInnerHTML={{ __html: hoverStyles }} />
       <div style={styles.container}>
         <div style={styles.header}>
-          <span style={styles.headerText}>Чат</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={styles.headerText}>{t('chat.title')}</span>
+            <span style={styles.betaBadge}>Beta</span>
+          </div>
           <span style={styles.badge}>{messages.length}</span>
         </div>
 
@@ -123,7 +128,7 @@ function ChatBox() {
         >
           {messages.length === 0 ? (
             <div style={styles.emptyState}>
-              <p style={styles.emptyText}>Пока нет сообщений. Начните беседу!</p>
+              <p style={styles.emptyText}>{t('chat.empty')}</p>
             </div>
           ) : (
             messages.map((msg) => (
@@ -160,7 +165,7 @@ function ChatBox() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Введите сообщение..."
+            placeholder={t('chat.placeholder')}
             style={styles.textarea}
             maxLength={MAX_CHARS}
             rows={2}
@@ -184,7 +189,7 @@ function ChatBox() {
                 cursor: inputText.trim() ? 'pointer' : 'not-allowed',
               }}
             >
-              Отправить
+              {t('chat.send')}
             </button>
           </div>
         </div>
@@ -225,6 +230,16 @@ const styles = {
     fontSize: '15px',
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  betaBadge: {
+    fontSize: '11px',
+    color: '#007AFF',
+    fontWeight: '600',
+    background: 'rgba(0, 122, 255, 0.15)',
+    padding: '2px 6px',
+    borderRadius: '6px',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
   },
   badge: {
     fontSize: '13px',

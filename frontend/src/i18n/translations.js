@@ -49,6 +49,14 @@ export const translations = {
       hideControls: 'Hide Controls',
       editUsername: 'Click to edit your username',
     },
+    // Chat
+    chat: {
+      title: 'Chat',
+      empty: 'No messages yet. Start the conversation!',
+      placeholder: 'Type a message...',
+      send: 'Send',
+      errorTooLong: 'Message too long (max {max} characters)',
+    },
   },
   ru: {
     // Главная страница
@@ -99,6 +107,14 @@ export const translations = {
       showControls: 'Показать управление',
       hideControls: 'Скрыть управление',
       editUsername: 'Нажмите, чтобы изменить имя',
+    },
+    // Чат
+    chat: {
+      title: 'Чат',
+      empty: 'Пока нет сообщений. Начните беседу!',
+      placeholder: 'Введите сообщение...',
+      send: 'Отправить',
+      errorTooLong: 'Сообщение слишком длинное (макс {max} символов)',
     },
   },
 };
