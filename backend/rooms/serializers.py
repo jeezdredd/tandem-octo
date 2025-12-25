@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from rooms.models import Room, RoomState, Video
+from rooms.models import ChatMessage, Room, RoomState, Video
 
 
 class VideoSerializer(serializers.ModelSerializer):
@@ -57,3 +57,10 @@ class RoomCreateSerializer(serializers.ModelSerializer):
         room = Room.objects.create(**validated_data)
         RoomState.objects.create(room=room)
         return room
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ["id", "username", "content", "created_at"]
+        read_only_fields = ["id", "created_at"]

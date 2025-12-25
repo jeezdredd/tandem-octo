@@ -169,6 +169,18 @@ class WebSocketService {
     }
   }
 
+  sendChat(content) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      console.log('WebSocketService: Sending chat message, content:', content);
+      this.socket.send(JSON.stringify({
+        type: 'chat',
+        content: content,
+      }));
+    } else {
+      console.error('WebSocketService: Cannot send chat - socket not ready', this.socket?.readyState);
+    }
+  }
+
   on(event, callback) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from rooms.models import Room, RoomState, Video
+from rooms.models import ChatMessage, Room, RoomState, Video
 
 
 class RoomStateInline(admin.StackedInline):
@@ -87,3 +87,17 @@ class VideoAdmin(admin.ModelAdmin):
             },
         ),
     ]
+
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ["room", "username", "content_preview", "created_at"]
+    list_filter = ["created_at", "room"]
+    search_fields = ["username", "content", "room__id"]
+    readonly_fields = ["id", "created_at"]
+    fields = ["id", "room", "username", "content", "created_at"]
+
+    def content_preview(self, obj):
+        return obj.content[:50] + "..." if len(obj.content) > 50 else obj.content
+
+    content_preview.short_description = "Message"

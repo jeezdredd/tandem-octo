@@ -64,3 +64,22 @@ class RoomState(models.Model):
     class Meta:
         verbose_name = "Room State"
         verbose_name_plural = "Room States"
+
+
+class ChatMessage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="messages")
+    username = models.CharField(max_length=100)
+    content = models.TextField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.username} in Room {self.room.id}: {self.content[:50]}"
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Chat Message"
+        verbose_name_plural = "Chat Messages"
+        indexes = [
+            models.Index(fields=["room", "created_at"]),
+        ]

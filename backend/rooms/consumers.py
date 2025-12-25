@@ -3,7 +3,7 @@ import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
-from rooms.models import Room, RoomState
+from rooms.models import ChatMessage, Room, RoomState
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,16 @@ class RoomConsumer(AsyncWebsocketConsumer):
                     "current_time": current_state["current_time"],
                     "is_playing": current_state["is_playing"],
                     "video_url": room_data.get("video_url", ""),
+                }
+            )
+        )
+
+        chat_history = await self.get_chat_history()
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "chat_history",
+                    "messages": chat_history,
                 }
             )
         )
@@ -125,6 +135,24 @@ class RoomConsumer(AsyncWebsocketConsumer):
                 room_users[self.room_id][self.channel_name] = new_username
                 await self.broadcast_user_list()
 
+        elif event_type == "chat":
+            content = data.get("content", "").strip()
+            if not content or len(content) > 1000:
+                return
+
+            message_id = await self.save_chat_message(content)
+            logger.info(f"Broadcasting CHAT to room {self.room_group_name}")
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "chat_event",
+                    "message_id": str(message_id),
+                    "username": self.username or "Guest",
+                    "content": content,
+                    "sender_channel": self.channel_name,
+                },
+            )
+
     async def video_event(self, event):
         logger.info(f"video_event called: event={event['event']}, sender={event.get('sender_channel')}, self={self.channel_name}")
         if event.get("sender_channel") != self.channel_name:
@@ -200,6 +228,23 @@ class RoomConsumer(AsyncWebsocketConsumer):
         else:
             logger.info(f"Skipping own video_change event for channel {self.channel_name}")
 
+    async def chat_event(self, event):
+        logger.info(f"chat_event called: sender={event.get('sender_channel')}, self={self.channel_name}")
+        if event.get("sender_channel") != self.channel_name:
+            logger.info(f"Sending chat message to client")
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "chat_message",
+                        "id": event["message_id"],
+                        "username": event["username"],
+                        "content": event["content"],
+                    }
+                )
+            )
+        else:
+            logger.info(f"Skipping own chat message for channel {self.channel_name}")
+
     @database_sync_to_async
     def get_room_data(self):
         room = Room.objects.get(id=self.room_id)
@@ -212,3 +257,22 @@ class RoomConsumer(AsyncWebsocketConsumer):
         room = Room.objects.get(id=self.room_id)
         room.video_url = video_url
         room.save()
+
+    @database_sync_to_async
+    def save_chat_message(self, content):
+        room = Room.objects.get(id=self.room_id)
+        message = ChatMessage.objects.create(
+            room=room,
+            username=self.username or "Guest",
+            content=content,
+        )
+        return message.id
+
+    @database_sync_to_async
+    def get_chat_history(self, limit=50):
+        from rooms.serializers import ChatMessageSerializer
+
+        room = Room.objects.get(id=self.room_id)
+        messages = ChatMessage.objects.filter(room=room).order_by("-created_at")[:limit]
+        messages = list(reversed(messages))
+        return ChatMessageSerializer(messages, many=True).data

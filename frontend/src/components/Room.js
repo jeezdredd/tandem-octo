@@ -6,6 +6,7 @@ import VideoPlayer from './VideoPlayer';
 import VideoSearch from './VideoSearch';
 import { useLanguage } from '../i18n/LanguageContext';
 import LanguageSwitch from './LanguageSwitch';
+import ChatBox from './ChatBox';
 
 const generateUsername = () => {
   const adjectives = ['Red', 'Blue', 'Green', 'Purple', 'Orange', 'Yellow', 'Pink', 'Cyan', 'Magenta', 'Lime', 'Indigo', 'Violet'];
@@ -248,8 +249,8 @@ function Room() {
         </div>
       </div>
 
-      <div style={styles.content}>
-        <div style={styles.sidebar}>
+      <div className="room-content" style={styles.content}>
+        <div className="left-sidebar" style={styles.sidebar}>
           <div className="card" style={styles.card}>
             <div style={styles.cardSection}>
               <div style={styles.sectionLabel}>{t('room.roomTitle').replace(':', '')}</div>
@@ -380,6 +381,10 @@ function Room() {
             <span style={styles.tipText}>{t('room.tipText')}</span>
           </div>
         </div>
+
+        <div className="chat-sidebar" style={styles.chatSidebar}>
+          <ChatBox />
+        </div>
       </div>
 
       <style>{globalStyles}</style>
@@ -430,9 +435,21 @@ const globalStyles = `
     background: rgba(255, 255, 255, 0.05);
   }
 
+  @media (max-width: 1400px) {
+    .room-content {
+      grid-template-columns: 320px 1fr !important;
+    }
+    .chat-sidebar {
+      display: none !important;
+    }
+  }
+
   @media (max-width: 1024px) {
-    .content-grid {
+    .room-content {
       grid-template-columns: 1fr !important;
+    }
+    .left-sidebar {
+      display: none !important;
     }
   }
 
@@ -530,7 +547,7 @@ const styles = {
   },
   content: {
     display: 'grid',
-    gridTemplateColumns: '320px 1fr',
+    gridTemplateColumns: '320px 1fr 320px',
     gap: '24px',
     padding: '24px 32px',
     maxWidth: '1600px',
@@ -751,6 +768,11 @@ const styles = {
     fontSize: '14px',
     color: '#AEAEB2',
     lineHeight: '1.5',
+  },
+  chatSidebar: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: 'calc(100vh - 80px)',
   },
 };
 
